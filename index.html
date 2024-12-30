@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Corridas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #b85c5c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ae4c4c;
+        }
+
+        .results {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gestão de Corridas</h1>
+        <form id="raceForm">
+            <label for="numCorredores">Número de Corredores:</label>
+            <input type="number" id="numCorredores" min="1" required>
+
+            <button type="button" id="generateNumbers">Gerar Números</button>
+            <button type="button" id="startTimer" class="hidden">Iniciar Cronômetro</button>
+        
+
+            <div id="corredores" class="hidden">
+                <label for="corredorNumero">Insira o número do corredor que cruzou a linha de chegada:</label>
+                <input type="number" id="corredorNumero" min="1" max="10000000000">
+                <button type="button" id="addCorredor">Adicionar ao Placar</button>
+            </div>
+        </form>
+
+        <div class="timer hidden" id="timer">00:00</div>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        const numCorredoresInput = document.getElementById('numCorredores');
+        const generateNumbersButton = document.getElementById('generateNumbers');
+        const startTimerButton = document.getElementById('startTimer');
+        const resetRaceButton = document.getElementById('resetRace');
+        const corredoresDiv = document.getElementById('corredores');
+        const corredorNumeroInput = document.getElementById('corredorNumero');
+        const addCorredorButton = document.getElementById('addCorredor');
+        const timerElement = document.getElementById('timer');
+        const resultsDiv = document.getElementById('results');
+
+        let corredores = [];
+        let startTime = null;
+        let timerInterval = null;
+        let ordemChegada = [];  // Para armazenar a ordem de chegada real
+
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+            const seconds = String(totalSeconds % 60).padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        }
+
+        function startTimer() {
+            startTime = performance.now();
+            timerInterval = setInterval(() => {
+                const elapsed = performance.now() - startTime;
+                timerElement.textContent = formatTime(elapsed);
+            }, 1000);
+        }
+
+        function resetRace() {
+            clearInterval(timerInterval);
+            startTime = null;
+            corredores = [];
+            ordemChegada = [];
+            resultsDiv.innerHTML = '';
+            corredoresDiv.classList.add('hidden');
+            startTimerButton.classList.add('hidden');
+            resetRaceButton.classList.add('hidden');
+            timerElement.classList.add('hidden');
+        }
+
+        generateNumbersButton.addEventListener('click', () => {
+            const numCorredores = parseInt(numCorredoresInput.value);
+            if (isNaN(numCorredores) || numCorredores < 1) {
+                alert('Por favor, insira um número válido de corredores.');
+                return;
+            }
+
+            // Criação de corredores com números aleatórios
+            corredores = Array.from({ length: numCorredores }, (_, i) => ({
+                numero: Math.floor(Math.random() * 10000000000) + 1,  // Número aleatório para cada corredor
+                tempo: null
+            }));
+
+            corredoresDiv.classList.remove('hidden');
+            startTimerButton.classList.remove('hidden');
+            resetRaceButton.classList.remove('hidden');
+            resultsDiv.innerHTML = '<h2>Placar:</h2>';
+        });
+
+        startTimerButton.addEventListener('click', () => {
+            startTimer();
+            startTimerButton.disabled = true;
+            timerElement.classList.remove('hidden');
+        });
+
+        addCorredorButton.addEventListener('click', () => {
+            if (!startTime) {
+                alert('O cronômetro ainda não foi iniciado.');
+                return;
+            }
+
+            const corredorNumero = parseInt(corredorNumeroInput.value);
+
+            // Verificar se o número inserido é válido dentro do intervalo desejado
+            if (isNaN(corredorNumero) || corredorNumero < 1 || corredorNumero > 10000000000) {
+                alert('Número do corredor inválido. O número deve estar entre 1 e 10.000.000.000.');
+                return;
+            }
+
+            const currentTime = timerElement.textContent;
+            const corredor = { numero: corredorNumero, tempo: currentTime };
+            ordemChegada.push(corredor);  // Adiciona o corredor à ordem de chegada
+
+            // Exibe a classificação
+            resultsDiv.innerHTML = '<h2>Placar:</h2>';
+            ordemChegada.sort((a, b) => a.tempo.localeCompare(b.tempo));  // Ordena a chegada pelos tempos
+            ordemChegada.forEach((c, posicao) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                resultItem.textContent = `${posicao + 1}º lugar: Corredor ${c.numero} - Tempo: ${c.tempo}`;
+                resultsDiv.appendChild(resultItem);
+            });
+
+            corredorNumeroInput.value = '';
+        });
+    </script>
+</body>
+</html>
